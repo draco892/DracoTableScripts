@@ -1,5 +1,45 @@
-# Object file
-*.o
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
 
-# Ada Library Information
-*.ali
+# Finder / volume metadata
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.apdisk
+
+# Logs
+*.log
+logs/
+*.out
+*.err
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Shell / execution artifacts
+*.command.bak
+*.sh.bak
+
+# Local build / cache folders if used in the Automator project
+build/
+buildOld/
+tmp/
+cache/
+
+# Editor files
+.vscode/
+.idea/
+
+# Python or misc local helpers, if you use them
+__pycache__/
