@@ -59,167 +59,146 @@
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
-					<string>#!/bin/zsh
+					<string>#!/bin/bash
 
-# Path of the generated command script that Terminal will execute
-SCRIPT_PATH="$HOME/bin/darktable-update.command"
+set -u
+set -o pipefail
 
-# Create or overwrite the command script
-cat &gt; "$SCRIPT_PATH" &lt;&lt;'EOS'
-#!/bin/zsh
+PROJECT_DIR="/Users/draco892/src/darktable"
+PREFIX_DIR="$HOME/.local"
+INSTALL_PREFIX="$HOME/bin/darktable-dev"
+LUA_PREFIX="/opt/homebrew/opt/lua@5.4"
 
-# Repository and build paths
-REPO="$HOME/src/darktable"
-BUILD="$REPO/build"
-BUILD_OLD="$REPO/buildOld"
-PREFIX="$HOME/bin/darktable-dev"
-BRANCH="master"
-
-# Log file location
-LOGDIR="$HOME/Library/Logs"
-LOGFILE="$LOGDIR/darktable-update.log"
-
-# Make sure the log directory exists
-mkdir -p "$LOGDIR"
-
-# Send both stdout and stderr to the terminal and the log file
-exec &gt; &gt;(tee -a "$LOGFILE") 2&gt;&amp;1
-
-# Show a macOS notification
-notify() {
-  local msg="$1"
-  local title="$2"
-  local subtitle="$3"
-  /usr/bin/osascript -e "display notification \"$msg\" with title \"$title\" subtitle \"$subtitle\""
+log() {
+    echo "[$(date '+%H:%M:%S')] $1"
 }
 
-# Print a visible header in Terminal
-echo ""
-echo "=============================================================="
-echo "Darktable Update - $(date '+%Y-%m-%d %H:%M:%S')"
-echo "=============================================================="
-
-# Try to set the Terminal tab/window title
-printf '\e]0;Darktable Update\a'
-
-# Move into the repository
-cd "$REPO" || {
-  echo "ERROR: repository not found: $REPO"
-  notify "Repository not found" "Darktable Update" "Error"
-  echo ""
-  echo "Press ENTER to close..."
-  read
-  exit 1
-}
-
-# Fetch all remote updates
-echo "== Fetching updates"
-git fetch --all || {
-  echo "ERROR: git fetch failed"
-  notify "git fetch failed" "Darktable Update" "Error"
-  echo ""
-  echo "Press ENTER to close..."
-  read
-  exit 1
-}
-
-# Compare local HEAD with the remote branch
-LOCAL_COMMIT=$(git rev-parse HEAD)
-REMOTE_COMMIT=$(git rev-parse "origin/$BRANCH")
-
-echo "Local : $LOCAL_COMMIT"
-echo "Remote: $REMOTE_COMMIT"
-
-# If both commits are the same, there is nothing to rebuild
-if [ "$LOCAL_COMMIT" = "$REMOTE_COMMIT" ]; then
-  echo "== No updates available"
-  notify "No updates found" "Darktable Update" "No build required"
-  echo ""
-  echo "Press ENTER to close..."
-  read
-  exit 0
-fi
-
-# Pull the new changes
-echo "== Updates found"
-git checkout "$BRANCH" || {
-  echo "ERROR: git checkout failed"
-  notify "git checkout failed" "Darktable Update" "Error"
-  echo ""
-  echo "Press ENTER to close..."
-  read
-  exit 1
-}
-
-git pull || {
-  echo "ERROR: git pull failed"
-  notify "git pull failed" "Darktable Update" "Error"
-  echo ""
-  echo "Press ENTER to close..."
-  read
-  exit 1
-}
-
-# Back up the previous build contents
-echo "== Backing up previous build"
-rm -rf "$BUILD_OLD"
-mkdir -p "$BUILD_OLD"
-
-if [ -d "$BUILD" ]; then
-  cp -R "$BUILD"/. "$BUILD_OLD"/ || {
-    echo "ERROR: build backup failed"
-    notify "Build backup failed" "Darktable Update" "Error"
-    echo ""
-    echo "Press ENTER to close..."
-    read
+fail() {
+    local msg="$1"
+    echo "ERRORE: $msg" &gt;&amp;2
+    osascript -e 'display dialog "Build darktable fallita:\n'"$msg"'" buttons {"OK"} default button "OK" with icon stop'
     exit 1
-  }
-else
-  echo "Build directory not found, nothing to back up"
-fi
-
-# Rebuild Darktable
-echo "== Rebuilding"
-rm -rf "$BUILD"
-
-./build.sh --install --build-type RelWithDebInfo --prefix "$PREFIX" || {
-  echo "ERROR: build failed"
-  notify "Build failed" "Darktable Update" "Check the log"
-  echo ""
-  echo "Press ENTER to close..."
-  read
-  exit 1
 }
 
-# Success message
-echo "== Completed successfully"
-notify "Darktable was updated and rebuilt successfully" "Darktable Update" "Completed"
+notify() {
+    local msg="$1"
+    osascript -e 'display notification "'"$msg"'" with title "Darktable build"'
+}
 
-echo ""
-echo "Log saved to: $LOGFILE"
-echo ""
-echo "Press ENTER to close..."
-read
-EOS
+run_step() {
+    local msg="$1"
+    shift
+    log "$msg"
+    "$@" || fail "$msg"
+}
 
-# Make the generated command script executable
-chmod +x "$SCRIPT_PATH"
+log "Avvio script di aggiornamento/build darktable"
+notify "Avvio aggiornamento darktable"
 
-# Open Terminal and run the generated script
-/usr/bin/osascript &lt;&lt;EOF
-tell application "Terminal"
-    activate
-    do script quoted form of POSIX path of "$SCRIPT_PATH"
-end tell
-EOF</string>
+[ -d "$PROJECT_DIR" ] || fail "Cartella progetto non trovata: $PROJECT_DIR"
+cd "$PROJECT_DIR" || fail "Impossibile entrare in $PROJECT_DIR"
+
+export CMAKE_PREFIX_PATH="${LUA_PREFIX}:${CMAKE_PREFIX_PATH:-}"
+export PREFIX="$PREFIX_DIR"
+
+log "Directory corrente: $(pwd)"
+log "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+log "PREFIX=$PREFIX"
+
+command -v git &gt;/dev/null 2&gt;&amp;1 || fail "git non trovato"
+[ -x "./build.sh" ] || fail "build.sh non trovato o non eseguibile"
+
+run_step "Eseguo git fetch --all" git fetch --all
+run_step "Eseguo git pull" git pull
+run_step "Rimuovo la cartella build" rm -rf build
+run_step "Avvio compilazione e installazione" ./build.sh --install --build-type RelWithDebInfo --prefix "$INSTALL_PREFIX"
+
+log "Build completata con successo"
+notify "Build darktable completata"
+osascript -e 'display dialog "Build darktable completata con successo." buttons {"OK"} default button "OK" with icon note'
+
+exit 0</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>
 					<key>inputMethod</key>
 					<integer>0</integer>
 					<key>shell</key>
-					<string>/bin/zsh</string>
+					<string>/bin/bash</string>
 					<key>source</key>
 					<string></string>
+				</dict>
+				<key>ActionRuntimeParameters</key>
+				<dict>
+					<key>COMMAND_STRING</key>
+					<string>#!/bin/bash
+
+set -u
+set -o pipefail
+
+PROJECT_DIR="/Users/draco892/src/darktable"
+PREFIX_DIR="$HOME/.local"
+INSTALL_PREFIX="$HOME/bin/darktable-dev"
+LUA_PREFIX="/opt/homebrew/opt/lua@5.4"
+
+log() {
+    echo "[$(date '+%H:%M:%S')] $1"
+}
+
+fail() {
+    local msg="$1"
+    echo "ERRORE: $msg" &gt;&amp;2
+    osascript -e 'display dialog "Build darktable fallita:\n'"$msg"'" buttons {"OK"} default button "OK" with icon stop'
+    exit 1
+}
+
+notify() {
+    local msg="$1"
+    osascript -e 'display notification "'"$msg"'" with title "Darktable build"'
+}
+
+run_step() {
+    local msg="$1"
+    shift
+    log "$msg"
+    "$@" || fail "$msg"
+}
+
+log "Avvio script di aggiornamento/build darktable"
+notify "Avvio aggiornamento darktable"
+
+[ -d "$PROJECT_DIR" ] || fail "Cartella progetto non trovata: $PROJECT_DIR"
+cd "$PROJECT_DIR" || fail "Impossibile entrare in $PROJECT_DIR"
+
+export CMAKE_PREFIX_PATH="${LUA_PREFIX}:${CMAKE_PREFIX_PATH:-}"
+export PREFIX="$PREFIX_DIR"
+
+log "Directory corrente: $(pwd)"
+log "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+log "PREFIX=$PREFIX"
+
+command -v git &gt;/dev/null 2&gt;&amp;1 || fail "git non trovato"
+[ -x "./build.sh" ] || fail "build.sh non trovato o non eseguibile"
+
+run_step "Eseguo git fetch --all" git fetch --all
+run_step "Eseguo git pull" git pull
+run_step "Rimuovo la cartella build" rm -rf build
+run_step "Avvio compilazione e installazione" ./build.sh --install --build-type RelWithDebInfo --prefix "$INSTALL_PREFIX"
+
+log "Build completata con successo"
+notify "Build darktable completata"
+osascript -e 'display dialog "Build darktable completata con successo." buttons {"OK"} default button "OK" with icon note'
+
+exit 0</string>
+					<key>CheckedForUserDefaultShell</key>
+					<true/>
+					<key>inputMethod</key>
+					<integer>0</integer>
+					<key>shell</key>
+					<string>/bin/bash</string>
+					<key>source</key>
+					<string></string>
+					<key>temporary items path</key>
+					<string>/var/folders/9g/49hvgv2d3fs5q0nkg6v05sym0000gn/T/1625568F-8223-4A36-8FC4-F0D1B8FF1FED/1/com.apple.RunShellScript</string>
 				</dict>
 				<key>BundleIdentifier</key>
 				<string>com.apple.RunShellScript</string>
@@ -321,12 +300,10 @@ EOF</string>
 						<string>4</string>
 					</dict>
 				</dict>
-				<key>conversionLabel</key>
-				<integer>0</integer>
 				<key>isViewVisible</key>
 				<integer>1</integer>
 				<key>location</key>
-				<string>565.000000:785.000000</string>
+				<string>309.000000:252.000000</string>
 				<key>nibPath</key>
 				<string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
 			</dict>
