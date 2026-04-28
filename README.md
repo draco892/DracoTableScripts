@@ -16,6 +16,8 @@ DracoTableScripts/
 ├── src/
 │   ├── DracoTable.sh
 │   └── DracoTable_CheckUpdate.sh
+├── Notes/
+│   ├── dtCheckUpdatesBashRawProcedure.txt
 └── conf/
     ├── DracoTable.conf
     └── DracoTable_CheckUpdate.conf
@@ -28,6 +30,9 @@ Launches the custom darktable development build with explicit environment variab
 
 ### DracoTable_CheckUpdate
 Checks the Git repository for updates, skips the build if the local branch is already up to date, and rebuilds/install darktable when new changes are available.
+
+## Notes directory
+folder containing development notes, such as notes or otherwise
 
 ## Configuration
 
