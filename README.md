@@ -17,7 +17,7 @@ DracoTableScripts/
 │   ├── DracoTable.sh
 │   └── DracoTable_CheckUpdate.sh
 ├── Notes/
-│   ├── dtCheckUpdatesBashRawProcedure.txt
+│   └── dtCheckUpdatesBashRawProcedure.txt
 └── conf/
     ├── DracoTable.conf
     └── DracoTable_CheckUpdate.conf
