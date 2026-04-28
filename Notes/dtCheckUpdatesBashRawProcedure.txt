@@ -1,0 +1,7 @@
+cd /Users/draco892/src/darktable
+export CMAKE_PREFIX_PATH="/opt/homebrew/opt/lua@5.4:$CMAKE_PREFIX_PATH"
+git fetch --all
+git pull
+rm -rf build                                                           
+export PREFIX="$HOME/.local"
+./build.sh --install --build-type RelWithDebInfo --prefix "$HOME/bin/darktable-dev"
